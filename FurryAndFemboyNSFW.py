@@ -1,4 +1,3 @@
-# meta developer: Femboy4k.t.me
 from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
@@ -36,7 +35,7 @@ class FurryCacheMod(loader.Module):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "channels",
-                ["@FurryFemboysPlace", "fur_pub_sas", "gexfor20"],
+                ["@furry_art_channel", "furryart", "gexfor20"],
                 "Список каналов для загрузки (через запятую или список)",
                 validator=loader.validators.Union(
                     loader.validators.Series(loader.validators.String()),
@@ -54,13 +53,23 @@ class FurryCacheMod(loader.Module):
     def _init_db(self):
         self._conn = sqlite3.connect(DB_PATH)
         cursor = self._conn.cursor()
+        
+        # Создаем базовую таблицу
         cursor.execute("""CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY,
             chat_id INTEGER,
             message_id INTEGER,
-            channel_name TEXT,
             UNIQUE(chat_id, message_id)
         )""")
+        
+        # Проверяем и добавляем новую колонку если её нет
+        try:
+            cursor.execute("SELECT channel_name FROM media LIMIT 1")
+        except sqlite3.OperationalError:
+            # Колонки нет, добавляем её
+            cursor.execute("ALTER TABLE media ADD COLUMN channel_name TEXT DEFAULT 'unknown'")
+            logger.info("Добавлена колонка channel_name в таблицу media")
+        
         cursor.execute("""CREATE TABLE IF NOT EXISTS stats (
             key TEXT PRIMARY KEY,
             value INTEGER
@@ -199,14 +208,29 @@ class FurryCacheMod(loader.Module):
             await utils.answer(message, self.strings("fetching"))
             
             cursor = self._conn.cursor()
-            cursor.execute("SELECT chat_id, message_id, channel_name FROM media ORDER BY RANDOM() LIMIT 1")
-            row = cursor.fetchone()
             
-            if not row:
+            # Проверяем есть ли колонка channel_name
+            try:
+                cursor.execute("SELECT chat_id, message_id, channel_name FROM media ORDER BY RANDOM() LIMIT 1")
+                row = cursor.fetchone()
+                if row:
+                    chat_id, msg_id, channel_name = row
+                else:
+                    chat_id, msg_id, channel_name = None, None, None
+            except sqlite3.OperationalError:
+                # Колонки channel_name нет, используем старый формат
+                cursor.execute("SELECT chat_id, message_id FROM media ORDER BY RANDOM() LIMIT 1")
+                row = cursor.fetchone()
+                if row:
+                    chat_id, msg_id = row
+                    channel_name = "неизвестный"
+                else:
+                    chat_id, msg_id, channel_name = None, None, None
+            
+            if not chat_id:
                 await utils.answer(message, self.strings("no_cache"))
                 return
             
-            chat_id, msg_id, channel_name = row
             self._increment_stat("used")
             
             try:
@@ -215,10 +239,14 @@ class FurryCacheMod(loader.Module):
                 if msg and msg.media:
                     file = await self.client.download_media(msg.media)
                     if file:
+                        caption = msg.message or ""
+                        if channel_name and channel_name != "неизвестный":
+                            caption = f"{caption}\n\nИз: {channel_name}" if caption else f"Из: {channel_name}"
+                        
                         await self.client.send_file(
                             message.chat_id, 
                             file, 
-                            caption=msg.message or f"Из: {channel_name}"
+                            caption=caption
                         )
                         try:
                             os.remove(file)
@@ -272,8 +300,13 @@ class FurryCacheMod(loader.Module):
         cursor.execute("SELECT COUNT(*) FROM media")
         count = cursor.fetchone()[0]
         
-        cursor.execute("SELECT channel_name, COUNT(*) FROM media GROUP BY channel_name")
-        by_channel = cursor.fetchall()
+        # Проверяем есть ли колонка channel_name
+        try:
+            cursor.execute("SELECT channel_name, COUNT(*) FROM media WHERE channel_name IS NOT NULL GROUP BY channel_name")
+            by_channel = cursor.fetchall()
+        except sqlite3.OperationalError:
+            # Колонки нет, показываем только общую статистику
+            by_channel = []
         
         uses = self._get_stat("used")
         
@@ -281,7 +314,7 @@ class FurryCacheMod(loader.Module):
         if by_channel:
             info += "\n\n📊 По каналам:"
             for channel, cnt in by_channel:
-                info += f"\n• {channel}: {cnt}"
+                info += f"\n• {channel or 'неизвестный'}: {cnt}"
         
         await utils.answer(message, info)
 
