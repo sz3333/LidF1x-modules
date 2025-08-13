@@ -1,3 +1,4 @@
+# meta developer: Femboy4k.t.me
 import traceback
 import subprocess
 import os
