@@ -1,3 +1,4 @@
+# meta developer: Femboy4k.t.me
 from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
