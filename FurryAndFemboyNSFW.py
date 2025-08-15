@@ -36,7 +36,7 @@ class FurryCacheMod(loader.Module):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "channels",
-                ["@furry_art_channel", "furryart", "gexfor20"],
+                ["@FurryFemboysPlace", "fur_pub_sas", "gexfor20"],
                 "Список каналов для загрузки (через запятую или список)",
                 validator=loader.validators.Union(
                     loader.validators.Series(loader.validators.String()),
