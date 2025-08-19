@@ -87,10 +87,11 @@ class AutoFormatting(loader.Module):
         
         self.quotes_enabled = not self.quotes_enabled
         status = "включены" if self.quotes_enabled else "выключены"
+        quote_text = 'оборачиваться в "кавычки"' if self.quotes_enabled else 'без кавычек'
         await utils.answer(
             message,
             f"🪐 <b>Автоматические кавычки</b> {status} ʕ·ᴥ·ʔ\n"
-            f"Теперь текст будет {'оборачиваться в "кавычки"' if self.quotes_enabled else 'без кавычек'}",
+            f"Теперь текст будет {quote_text}",
             parse_mode="HTML",
         )
             return
