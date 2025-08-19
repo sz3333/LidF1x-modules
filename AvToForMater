@@ -26,8 +26,8 @@ class AutoFormatting(loader.Module):
 
     def __init__(self):
         self.enabled = False
-        self.quotes_enabled = False  # автоматические кавычки
-        self.language = "python"  # язык по умолчанию
+        self.quotes_enabled = False
+        self.language = "python"
         self.available_languages = [
             "python", "javascript", "html", "css", "bash", "json", 
             "xml", "sql", "php", "java", "cpp", "c", "go", "rust", 
@@ -39,11 +39,9 @@ class AutoFormatting(loader.Module):
         if not content:
             return
 
-        # Добавляем кавычки если включено
         if self.quotes_enabled:
             content = f'"{content}"'
 
-        # Оборачиваем текст в pre code теги
         formatted_content = f'<pre><code class="language-{self.language}">{content}</code></pre>'
         await message.edit(formatted_content, parse_mode="HTML")
 
@@ -59,20 +57,6 @@ class AutoFormatting(loader.Module):
             f"Кавычки: {'включены' if self.quotes_enabled else 'выключены'}",
             parse_mode="HTML",
         )
-
-    @loader.command()
-    async def aflang(self, message):
-        """Устанавливает язык для подсветки синтаксиса. Использование: .aflang python"""
-        args = utils.get_args_raw(message)
-        if not args:
-            available = ", ".join(self.available_languages)
-            await utils.answer(
-                message,
-                f"🪐 <b>Доступные языки:</b>\n<code>{available}</code>\n\n"
-                f"<b>Текущий язык:</b> <code>{self.language}</code>\n\n"
-                f"<b>Использование:</b> <code>.aflang python</code>",
-                parse_mode="HTML",
-            )
 
     @loader.command()
     async def afquotes(self, message):
@@ -94,6 +78,20 @@ class AutoFormatting(loader.Module):
             f"Теперь текст будет {quote_text}",
             parse_mode="HTML",
         )
+
+    @loader.command()
+    async def aflang(self, message):
+        """Устанавливает язык для подсветки синтаксиса. Использование: .aflang python"""
+        args = utils.get_args_raw(message)
+        if not args:
+            available = ", ".join(self.available_languages)
+            await utils.answer(
+                message,
+                f"🪐 <b>Доступные языки:</b>\n<code>{available}</code>\n\n"
+                f"<b>Текущий язык:</b> <code>{self.language}</code>\n\n"
+                f"<b>Использование:</b> <code>.aflang python</code>",
+                parse_mode="HTML",
+            )
             return
 
         language = args.lower()
@@ -124,7 +122,6 @@ class AutoFormatting(loader.Module):
             )
             return
         
-        # Добавляем кавычки если включено и автоформатер включен
         content = args
         if self.enabled and self.quotes_enabled:
             content = f'"{content}"'
@@ -153,7 +150,6 @@ class AutoFormatting(loader.Module):
             )
             return
         
-        # Добавляем кавычки если включено и автоформатер включен
         content = code
         if self.enabled and self.quotes_enabled:
             content = f'"{content}"'
@@ -182,18 +178,15 @@ class AutoFormatting(loader.Module):
 
     @loader.watcher(out=True)
     async def message_watcher(self, message):
-        # Проверяем, что это не команда модуля
         if not message.text:
             return
             
         commands = [".autoformat", ".afquotes", ".aflang", ".formatnow", ".formatlang", ".formatstatus"]
         text_lower = message.text.lower()
         
-        # Если сообщение начинается с команды - пропускаем
         for cmd in commands:
             if text_lower.startswith(cmd):
                 return
         
-        # Если автоформатирование включено - форматируем
         if self.enabled:
             await self.format_message(message)
