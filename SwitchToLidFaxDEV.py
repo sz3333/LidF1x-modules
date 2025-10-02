@@ -36,7 +36,7 @@ class SwitchToLidFax(loader.Module):
             )
             await self.inline._bot.send_photo(
                 self.tg_id, 
-                "https://imgur.com/a/AYmh8W8.png",
+                "https://envs.sh/K1p.png",
                 caption="<b>Hello, you switched to a LidFax, a Heroku Userbot fork with some improvements.</b>"
                 "\nModule for switching is unloaded.",
                 reply_markup=keyboard,
