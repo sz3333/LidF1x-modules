@@ -4,14 +4,14 @@
 #░▀▀▀░░▀▀░░▀▀░░▀░▀▀░▀░░▀░▀▀▀▀░░▀▀░░░░▀░░▒▀
 # Name: switchtoheroku
 # Description: Switch your hikka to lidfax
-# Author: @codrago_m
+# Author: @DepositUser
 # ---------------------------------------------------------------------------------
 # 🔒    Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
 # ---------------------------------------------------------------------------------
 # Author: @codrago
 # Commands: switchtoheroku
-# meta developer: @codrago_m
+# meta developer: @DepositUser
 # meta_desc: Switch your hikka to lidfax
 # meta banner: https://mods.codrago.top/banners/banner.png
 # meta pic: https://kappa.lol/2Z_Q-
