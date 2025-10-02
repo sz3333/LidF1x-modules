@@ -50,8 +50,8 @@ class SwitchToLidFax(loader.Module):
             await self.invoke('unloadmod', 'SwitchToLidFax', self.inline.bot_id)
 
     @loader.command()
-    async def switchtoheroku(self, message: Message):
-        """ - Automatically switch to heroku"""
+    async def switchtolidfax(self, message: Message):
+        """ - Automatically switch to lidfax"""
 
         await utils.answer(message, "Compatibility check... Wait")
 
