@@ -105,10 +105,10 @@ class FurryCacheMod(loader.Module):
         fallback_channels = [
             "gexfor20",
             "@gexfor20", 
-            "furryart",
-            "@furryart",
-            "furry_nsfw",
-            "@furry_nsfw"
+            "femboywishes",
+            "@furry_yaoi_arts",
+            "YeaFuta",
+            "@femboyart"
         ]
         
         # Объединяем без дублей
