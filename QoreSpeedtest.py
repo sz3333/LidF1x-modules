@@ -1,6 +1,6 @@
 # meta developer: @mwmodules & forked by DepositUser.t.me
 # meta desc: 🚀 Extended Upload Speed Test — long duration test with large data volumes for accurate measurement
-# by @mwmodules + edited by catboy 😺
+# by @mwmodules + edited by DepsoitUser.t.me
 # 🔒 Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
 
