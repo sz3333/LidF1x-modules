@@ -1,4 +1,4 @@
-# meta developer: Femboy4k.t.me
+# meta developer: DepositUser.t.me
 from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
@@ -54,23 +54,20 @@ class FurryCacheMod(loader.Module):
     def _init_db(self):
         self._conn = sqlite3.connect(DB_PATH)
         cursor = self._conn.cursor()
-        
-        # Создаем базовую таблицу
+
         cursor.execute("""CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY,
             chat_id INTEGER,
             message_id INTEGER,
             UNIQUE(chat_id, message_id)
         )""")
-        
-        # Проверяем и добавляем новую колонку если её нет
+
         try:
             cursor.execute("SELECT channel_name FROM media LIMIT 1")
         except sqlite3.OperationalError:
-            # Колонки нет, добавляем её
             cursor.execute("ALTER TABLE media ADD COLUMN channel_name TEXT DEFAULT 'unknown'")
             logger.info("Добавлена колонка channel_name в таблицу media")
-        
+
         cursor.execute("""CREATE TABLE IF NOT EXISTS stats (
             key TEXT PRIMARY KEY,
             value INTEGER
@@ -96,12 +93,10 @@ class FurryCacheMod(loader.Module):
         return res[0] if res else 0
 
     def _get_channels(self):
-        """Получаем список каналов из конфига"""
         channels = self.config["channels"]
         if isinstance(channels, str):
             channels = [c.strip() for c in channels.split(",")]
-        
-        # Добавляем резервные каналы
+
         fallback_channels = [
             "gexfor20",
             "@gexfor20", 
@@ -110,16 +105,12 @@ class FurryCacheMod(loader.Module):
             "YeaFuta",
             "@femboyart"
         ]
-        
-        # Объединяем без дублей
         all_channels = list(dict.fromkeys(channels + fallback_channels))
         return all_channels
 
     async def _test_channel_access(self, channel_name):
-        """Проверяем доступность канала"""
         try:
             channel = await self.client.get_entity(channel_name)
-            # Пробуем получить хотя бы одно сообщение
             messages = await self.client.get_messages(channel, limit=1)
             return channel, True
         except Exception as e:
@@ -127,26 +118,22 @@ class FurryCacheMod(loader.Module):
             return None, False
 
     async def _find_accessible_channels(self):
-        """Находим все доступные каналы"""
         channels = self._get_channels()
         accessible = []
-        
+
         for channel_name in channels:
             channel, is_accessible = await self._test_channel_access(channel_name)
             if is_accessible:
                 accessible.append((channel_name, channel))
                 logger.info(f"✅ Канал доступен: {channel_name}")
-            
-            await asyncio.sleep(0.5)  # Небольшая задержка между проверками
-        
+            await asyncio.sleep(0.5)
         return accessible
 
     async def _load_from_channel(self, channel_name, channel, max_messages):
-        """Загружаем медиа из одного канала"""
         media_loaded = 0
         offset_id = 0
         limit = 100
-        
+
         try:
             while media_loaded < max_messages:
                 messages = await self.client.get_messages(
@@ -154,10 +141,10 @@ class FurryCacheMod(loader.Module):
                     limit=min(limit, max_messages - media_loaded),
                     offset_id=offset_id
                 )
-                
+
                 if not messages:
                     break
-                
+
                 cursor = self._conn.cursor()
                 for msg in messages:
                     if msg.media:
@@ -169,48 +156,45 @@ class FurryCacheMod(loader.Module):
                             media_loaded += 1
                         except Exception as e:
                             logger.error(f"Ошибка при сохранении медиа: {e}")
-                
+
                 self._conn.commit()
                 if messages:
                     offset_id = messages[-1].id
-                
+
                 await asyncio.sleep(0.2)
-                
         except Exception as e:
             logger.error(f"Ошибка при загрузке из {channel_name}: {e}")
-        
+
         return media_loaded
 
     async def furrloadcmd(self, message: Message):
         """Загружает медиа из доступных каналов в кеш"""
         await utils.answer(message, "🔍 Ищу доступные каналы...")
-        
+
         accessible_channels = await self._find_accessible_channels()
-        
+
         if not accessible_channels:
             await utils.answer(message, self.strings("channel_error"))
             return
-        
+
         await utils.answer(message, f"📥 Загружаю из {len(accessible_channels)} каналов...")
-        
+
         total_loaded = 0
         max_per_channel = self.config["max_messages"] // len(accessible_channels)
-        
+
         for channel_name, channel in accessible_channels:
             loaded = await self._load_from_channel(channel_name, channel, max_per_channel)
             total_loaded += loaded
             logger.info(f"Загружено из {channel_name}: {loaded} медиа")
-        
+
         await utils.answer(message, f"✅ Загружено {total_loaded} медиа файлов!")
 
     async def furrcmd(self, message: Message):
         """Даёт тебе порцию пушистого кринжа из базы 🐱‍👤"""
         try:
             await utils.answer(message, self.strings("fetching"))
-            
+
             cursor = self._conn.cursor()
-            
-            # Проверяем есть ли колонка channel_name
             try:
                 cursor.execute("SELECT chat_id, message_id, channel_name FROM media ORDER BY RANDOM() LIMIT 1")
                 row = cursor.fetchone()
@@ -219,7 +203,6 @@ class FurryCacheMod(loader.Module):
                 else:
                     chat_id, msg_id, channel_name = None, None, None
             except sqlite3.OperationalError:
-                # Колонки channel_name нет, используем старый формат
                 cursor.execute("SELECT chat_id, message_id FROM media ORDER BY RANDOM() LIMIT 1")
                 row = cursor.fetchone()
                 if row:
@@ -227,27 +210,24 @@ class FurryCacheMod(loader.Module):
                     channel_name = "неизвестный"
                 else:
                     chat_id, msg_id, channel_name = None, None, None
-            
+
             if not chat_id:
                 await utils.answer(message, self.strings("no_cache"))
                 return
-            
+
             self._increment_stat("used")
-            
+
             try:
-                # Пробуем получить сообщение
                 msg = await self.client.get_messages(chat_id, ids=msg_id)
                 if msg and msg.media:
                     file = await self.client.download_media(msg.media)
                     if file:
-                        caption = msg.message or ""
-                        if channel_name and channel_name != "неизвестный":
-                            caption = f"{caption}\n\nИз: {channel_name}" if caption else f"Из: {channel_name}"
-                        
+                        # ⚡ теперь без текста и подписи, чистое медиа
                         await self.client.send_file(
-                            message.chat_id, 
-                            file, 
-                            caption=caption
+                            message.chat_id,
+                            file,
+                            caption=None,
+                            force_document=False
                         )
                         try:
                             os.remove(file)
@@ -257,13 +237,11 @@ class FurryCacheMod(loader.Module):
                         raise Exception("Не удалось скачать файл")
                 else:
                     raise Exception("Сообщение не найдено")
-                    
+
             except Exception as e:
                 logger.error(f"Не удалось получить сообщение {msg_id}: {e}")
-                # Удаляем недоступное сообщение из кеша
                 cursor.execute("DELETE FROM media WHERE chat_id = ? AND message_id = ?", (chat_id, msg_id))
                 self._conn.commit()
-                # Пробуем еще раз
                 await self.furrcmd(message)
                 return
 
@@ -277,20 +255,19 @@ class FurryCacheMod(loader.Module):
         if not args:
             await utils.answer(message, "Использование: .furrset @channel_name")
             return
-        
+
         channel_name = args.strip()
         channel, is_accessible = await self._test_channel_access(channel_name)
-        
+
         if is_accessible:
-            # Добавляем в конфиг
             current_channels = self.config["channels"]
             if isinstance(current_channels, str):
                 current_channels = [c.strip() for c in current_channels.split(",")]
-            
+
             if channel_name not in current_channels:
                 current_channels.append(channel_name)
                 self.config["channels"] = current_channels
-            
+
             await utils.answer(message, self.strings("channel_set").format(channel_name))
         else:
             await utils.answer(message, f"❌ Канал {channel_name} недоступен")
@@ -300,23 +277,21 @@ class FurryCacheMod(loader.Module):
         cursor = self._conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM media")
         count = cursor.fetchone()[0]
-        
-        # Проверяем есть ли колонка channel_name
+
         try:
             cursor.execute("SELECT channel_name, COUNT(*) FROM media WHERE channel_name IS NOT NULL GROUP BY channel_name")
             by_channel = cursor.fetchall()
         except sqlite3.OperationalError:
-            # Колонки нет, показываем только общую статистику
             by_channel = []
-        
+
         uses = self._get_stat("used")
-        
+
         info = self.strings("info").format(count, uses)
         if by_channel:
             info += "\n\n📊 По каналам:"
             for channel, cnt in by_channel:
                 info += f"\n• {channel or 'неизвестный'}: {cnt}"
-        
+
         await utils.answer(message, info)
 
     async def furrclearcmd(self, message: Message):
