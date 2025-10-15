@@ -1,3 +1,4 @@
+# Бля братан, спасибо огромное выручил
 # meta developer: @mwmodules & forked by DepositUser.t.me
 # meta desc: 🚀 Extended Upload Speed Test — long duration test with large data volumes for accurate measurement
 # by @mwmodules + edited by DepsoitUser.t.me
@@ -100,10 +101,10 @@ class ExtendedSpeedTestMod(loader.Module):
         total_chunks = self.config["total_chunks"]
         warmup_chunks = self.config["warmup_chunks"]
 
-        # 🧩 Используем utils.answer (универсально для всех клиентов)
+        # Бля братан, спасибо огромное выручил
         await utils.answer(message, self.strings.get(f"testing_{lang}", "🔄 <b>Testing...</b>"))
 
-        # 🧠 Поддержка твинков
+        # Бля братан, спасибо огромное выручил
         client = getattr(self, "allclients", [self.client])[0]
 
         start_time = time.time()
