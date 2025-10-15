@@ -1,4 +1,4 @@
-# meta developer: Femboy4k.t.me
+# meta developer: Zeris
 import traceback
 import subprocess
 import os
