@@ -52,7 +52,7 @@ class AutoFormatting(loader.Module):
         status = "включено" if self.enabled else "выключено"
         await utils.answer(
             message,
-            f"🪐 <b>Автоформатирование</b> {status} ʕ·ᴥ·ʔ\n"
+            f"⛄ <b>Автоформатирование</b> {status} ʕ·ᴥ·ʔ\n"
             f"Текущий язык: <code>{self.language}</code>\n"
             f"Кавычки: {'включены' if self.quotes_enabled else 'выключены'}",
             parse_mode="HTML",
@@ -64,7 +64,7 @@ class AutoFormatting(loader.Module):
         if not self.enabled:
             await utils.answer(
                 message,
-                "🪐 <b>Ошибка!</b> Сначала включите автоформатирование командой <code>.autoformat</code> ʕ·ᴥ·ʔ",
+                "⛄ <b>Ошибка!</b> Сначала включите автоформатирование командой <code>.autoformat</code> ʕ·ᴥ·ʔ",
                 parse_mode="HTML",
             )
             return
@@ -74,7 +74,7 @@ class AutoFormatting(loader.Module):
         quote_text = 'оборачиваться в "кавычки"' if self.quotes_enabled else 'без кавычек'
         await utils.answer(
             message,
-            f"🪐 <b>Автоматические кавычки</b> {status} ʕ·ᴥ·ʔ\n"
+            f"⛄ <b>Автоматические кавычки</b> {status} ʕ·ᴥ·ʔ\n"
             f"Теперь текст будет {quote_text}",
             parse_mode="HTML",
         )
@@ -87,7 +87,7 @@ class AutoFormatting(loader.Module):
             available = ", ".join(self.available_languages)
             await utils.answer(
                 message,
-                f"🪐 <b>Доступные языки:</b>\n<code>{available}</code>\n\n"
+                f"⛄ <b>Доступные языки:</b>\n<code>{available}</code>\n\n"
                 f"<b>Текущий язык:</b> <code>{self.language}</code>\n\n"
                 f"<b>Использование:</b> <code>.aflang python</code>",
                 parse_mode="HTML",
@@ -99,13 +99,13 @@ class AutoFormatting(loader.Module):
             self.language = language
             await utils.answer(
                 message,
-                f"🪐 <b>Язык изменен на:</b> <code>{self.language}</code> ʕ·ᴥ·ʔ",
+                f"⛄ <b>Язык изменен на:</b> <code>{self.language}</code> ʕ·ᴥ·ʔ",
                 parse_mode="HTML",
             )
         else:
             await utils.answer(
                 message,
-                f"🪐 <b>Неизвестный язык:</b> <code>{language}</code>\n"
+                f"⛄ <b>Неизвестный язык:</b> <code>{language}</code>\n"
                 f"Используйте <code>.aflang</code> без параметров для списка языков",
                 parse_mode="HTML",
             )
@@ -117,7 +117,7 @@ class AutoFormatting(loader.Module):
         if not args:
             await utils.answer(
                 message,
-                "🪐 <b>Использование:</b> <code>.formatnow ваш код здесь</code>",
+                "⛄ <b>Использование:</b> <code>.formatnow ваш код здесь</code>",
                 parse_mode="HTML",
             )
             return
@@ -136,7 +136,7 @@ class AutoFormatting(loader.Module):
         if len(args) < 2:
             await utils.answer(
                 message,
-                "🪐 <b>Использование:</b> <code>.formatlang python ваш код</code>",
+                "⛄ <b>Использование:</b> <code>.formatlang python ваш код</code>",
                 parse_mode="HTML",
             )
             return
@@ -145,7 +145,7 @@ class AutoFormatting(loader.Module):
         if language not in self.available_languages:
             await utils.answer(
                 message,
-                f"🪐 <b>Неизвестный язык:</b> <code>{language}</code>",
+                f"⛄ <b>Неизвестный язык:</b> <code>{language}</code>",
                 parse_mode="HTML",
             )
             return
@@ -164,7 +164,7 @@ class AutoFormatting(loader.Module):
         quotes_status = "включены" if self.quotes_enabled else "выключены"
         await utils.answer(
             message,
-            f"🪐 <b>Автоформатирование:</b> {status}\n"
+            f"⛄ <b>Автоформатирование:</b> {status}\n"
             f"<b>Кавычки:</b> {quotes_status}\n"
             f"<b>Язык:</b> <code>{self.language}</code>\n\n"
             f"<b>Команды:</b>\n"
