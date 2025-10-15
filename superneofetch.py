@@ -172,7 +172,7 @@ class SuperNeofetchMod(loader.Module):
             )
         )
 
-        # Хранилища данных
+        # soso
         self.monitoring_active = False
         self.monitoring_task = None
         self.system_history = []
@@ -197,7 +197,7 @@ class SuperNeofetchMod(loader.Module):
         self._client = client
         self._db = db
 
-        # Запускаем мониторинг если включен
+        # soso
         if self.config["monitoring"]:
             await self._start_monitoring()
 
@@ -350,7 +350,7 @@ class SuperNeofetchMod(loader.Module):
 
         await utils.answer(message, self.strings("report_generated"), reply_markup=buttons)
 
-    # Callback функции для кнопок
+    # soso
     async def refresh_sysinfo(self, call):
         """Обновить системную информацию"""
         info = await self._get_detailed_system_info()
@@ -457,7 +457,7 @@ class SuperNeofetchMod(loader.Module):
     async def _run_neofetch(self, message):
         """Запустить neofetch"""
         try:
-            # Проверяем наличие neofetch
+            # soso
             subprocess.run(["which", "neofetch"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             # Формируем команду
@@ -691,7 +691,7 @@ class SuperNeofetchMod(loader.Module):
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
-        # Сортируем по CPU
+        # soso
         processes.sort(key=lambda x: x['cpu_percent'] or 0, reverse=True)
 
         for i, proc in enumerate(processes[:10]):  # Топ 10
@@ -829,7 +829,7 @@ class SuperNeofetchMod(loader.Module):
         """Запустить сканирование безопасности"""
         results = {}
 
-        # Проверка открытых портов
+        # soso
         try:
             connections = psutil.net_connections()
             listening_ports = [conn.laddr.port for conn in connections if conn.status == 'LISTEN']
