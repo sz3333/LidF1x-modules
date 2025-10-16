@@ -1,4 +1,4 @@
-# meta developer: Zeris
+# meta developer: Zeris & DepositUser.t.me
 import os
 import shutil
 import time
