@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
 # If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/
 
-# meta developer: Femboy4k.t.me
+# meta developer: DepositUser.t.me
 from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
