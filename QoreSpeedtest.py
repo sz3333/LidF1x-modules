@@ -1,5 +1,5 @@
 # Бля братан, спасибо огромное выручил
-# meta developer: @mwmodules & forked by DepositUser.t.me
+# meta developer: @mwmodules & forked by ExclusiveFurry.t.me
 # meta desc: 🚀 Extended Upload Speed Test — long duration test with large data volumes for accurate measurement
 # by @mwmodules + edited by DepsoitUser.t.me
 # 🔒 Licensed under the GNU AGPLv3
