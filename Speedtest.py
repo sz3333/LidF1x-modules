@@ -1,7 +1,7 @@
-# Бля братан, спасибо огромное выручил
+# ВСЕ ПРАВА ПРИНАДЛЕЖАТ ИХ АВТОРАМ, Я ПРОСТО СДЕЛАЛ ФОРК НА ПРОЕКТ И НЕ ВЫДАЮ СЕБЯ ЗА АВТОРА
 # meta developer: @mwmodules & forked by ExclusiveFurry.t.me
 # meta desc: 🚀 Extended Upload Speed Test — long duration test with large data volumes for accurate measurement
-# by @mwmodules + edited by ExclusiveFurry.t.me
+# by @mwmodules & forked by ExclusiveFurry.t.me
 # 🔒 Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
 
@@ -13,9 +13,8 @@ from .. import loader, utils
 
 @loader.tds
 class ExtendedSpeedTestMod(loader.Module):
-    """🚀 Extended Upload Speed Test with large data volumes for accurate measurement
-    🚀 Расширенный тест скорости отдачи с большими объемами данных для точного измерения
-    🚀 Розширений тест швидкості віддачі з великими обсягами даних для точного вимірювання"""
+    """🚀 Extended Upload Speed Test (twin-safe edition)
+    🐾 Accurate upload measurement with smart message editing."""
 
     strings = {
         "name": "ExtendedSpeedTest",
@@ -36,7 +35,7 @@ class ExtendedSpeedTestMod(loader.Module):
     def __init__(self):
         self.config = loader.ModuleConfig(
             "language", "en", "Module language (en, ru, uk)",
-            "chunk_size_mb", 25, "Size of each upload chunk in MB (default: 25)",
+            "chunk_size_mb", 25, "Size of each upload chunk in MB",
             "total_chunks", 8, "Number of chunks to upload (default: 8 = 200MB total)",
             "warmup_chunks", 2, "Number of warmup chunks (excluded from measurement)"
         )
@@ -89,25 +88,34 @@ class ExtendedSpeedTestMod(loader.Module):
         except:
             return {"location": "N/A", "org": "N/A"}
 
+    async def safe_update(self, old, text):
+        """умное обновление без спама"""
+        try:
+            return await old.edit(text)
+        except Exception:
+            try:
+                return await utils.answer(old, text)
+            except Exception:
+                return old  # fallback
+
     @loader.command(
-        ru_doc="Запустить расширенный тест скорости отдачи с большими объемами данных",
-        uk_doc="Запустити розширений тест швидкості віддачі з великими обсягами даних",
-        en_doc="Start extended upload speed test with large data volumes"
+        ru_doc="Запустить расширенный тест скорости отдачи (без спама в твинке)",
+        uk_doc="Запустити розширений тест швидкості віддачі (без спаму у твині)",
+        en_doc="Start extended upload test (twin-safe)"
     )
     async def extspeedtest(self, message):
-        """🚀 Start extended upload speed test with large data volumes"""
+        """🚀 Start extended upload speed test with smart twin handling"""
         lang = self.config["language"]
         chunk_size = self.config["chunk_size_mb"] * 1024 * 1024
         total_chunks = self.config["total_chunks"]
         warmup_chunks = self.config["warmup_chunks"]
 
-        # Бля братан, спасибо огромное выручил
-        await utils.answer(message, self.strings.get(f"testing_{lang}", "🔄 <b>Testing...</b>"))
-
-        # Бля братан, спасибо огромное выручил
+        # 🧠 Поддержка твинков
         client = getattr(self, "allclients", [self.client])[0]
 
+        msg = await utils.answer(message, self.strings.get(f"testing_{lang}", "🔄 <b>Testing...</b>"))
         start_time = time.time()
+
         timeout = aiohttp.ClientTimeout(total=120)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             try:
@@ -122,13 +130,13 @@ class ExtendedSpeedTestMod(loader.Module):
                 for chunk_num in range(1, total_chunks + 1):
                     elapsed = time.time() - start_time
                     progress_msg = self.strings.get(f"progress_{lang}", "🔄 Testing...").format(
-                        chunk_num, total_chunks, 
+                        chunk_num, total_chunks,
                         self.format_size(total_bytes),
                         elapsed
                     )
-                    await utils.answer(message, progress_msg)
+                    msg = await self.safe_update(msg, progress_msg)
 
-                    speed, duration = await self.upload_chunk(session, chunk_data)
+                    speed, _ = await self.upload_chunk(session, chunk_data)
 
                     if chunk_num == warmup_chunks + 1:
                         measurement_start = time.time()
@@ -147,7 +155,7 @@ class ExtendedSpeedTestMod(loader.Module):
                 actual_speed = total_bytes / measurement_duration if measurement_duration > 0 else 0
                 final_speed = min(avg_speed, actual_speed) if avg_speed and actual_speed else max(avg_speed, actual_speed)
 
-                result_template = {
+                result = {
                     "en": """<b>🚀 Extended Upload Speed Test Results:</b>
 
 <b>📤 Upload Speed:</b> <code>{}</code>
@@ -162,7 +170,6 @@ class ExtendedSpeedTestMod(loader.Module):
 <b>🌐 Server:</b> <code>{}</code>
 <b>📡 Provider:</b> <code>{}</code>
 <b>📅 Time:</b> <code>{}</code>""",
-
                     "ru": """<b>🚀 Результаты расширенного теста отдачи:</b>
 
 <b>📤 Скорость отдачи:</b> <code>{}</code>
@@ -177,7 +184,6 @@ class ExtendedSpeedTestMod(loader.Module):
 <b>🌐 Сервер:</b> <code>{}</code>
 <b>📡 Провайдер:</b> <code>{}</code>
 <b>📅 Время:</b> <code>{}</code>""",
-
                     "uk": """<b>🚀 Результати розширеного тесту віддачі:</b>
 
 <b>📤 Швидкість віддачі:</b> <code>{}</code>
@@ -192,9 +198,9 @@ class ExtendedSpeedTestMod(loader.Module):
 <b>🌐 Сервер:</b> <code>{}</code>
 <b>📡 Провайдер:</b> <code>{}</code>
 <b>📅 Час:</b> <code>{}</code>"""
-                }
+                }.get(lang, "en")
 
-                result = result_template.get(lang, result_template["en"]).format(
+                msg = await self.safe_update(msg, result.format(
                     self.format_speed(final_speed),
                     ping,
                     self.format_size(total_bytes),
@@ -204,12 +210,7 @@ class ExtendedSpeedTestMod(loader.Module):
                     network_info["location"],
                     network_info["org"],
                     datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-                )
-
-                await utils.answer(message, result)
+                ))
 
             except Exception as e:
-                await utils.answer(
-                    message,
-                    self.strings.get(f"error_{lang}", "❌ <b>Error:</b>\n<code>{}</code>").format(str(e))
-                )
+                await self.safe_update(msg, self.strings.get(f"error_{lang}", "❌ <b>Error:</b>\n<code>{}</code>").format(str(e)))
