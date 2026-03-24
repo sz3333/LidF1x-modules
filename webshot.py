@@ -7,7 +7,7 @@ from .. import loader, utils
 
 
 class WebShotMod(loader.Module):
-    """Делает скриншот сайта и отправляет в чат"""
+    """Делает скриншот сайта и отправляет как файл в чат"""
 
     @loader.command()
     async def webshotcmd(self, message):
@@ -71,8 +71,7 @@ class WebShotMod(loader.Module):
                 try:
                     await page.goto(url, wait_until="networkidle", timeout=30_000)
                 except PlaywrightTimeout:
-                    # Если networkidle не дождались — продолжаем
-                    pass
+                    pass  # если networkidle не дождались — продолжаем
 
                 await utils.answer(
                     message,
@@ -81,7 +80,7 @@ class WebShotMod(loader.Module):
 
                 await page.wait_for_timeout(wait_seconds * 1000)
 
-                # Скролл для lazy-контента
+                # Скролл для подгрузки lazy-контента
                 await page.evaluate(
                     """
                     async () => {
@@ -119,14 +118,15 @@ class WebShotMod(loader.Module):
             if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
                 return await utils.answer(message, "❌ <b>Скриншот не создался.</b> Попробуй ещё раз.")
 
-            # Отправка файла
+            # Отправка как несжатый файл
             try:
                 await message.client.send_file(
-                    entity=message.to_id,  # <--- вот что работает в новых версиях
+                    entity=message.to_id,
                     file=tmp_path,
                     caption=f"🌐 <b>{url}</b>\n⏱ Ожидание: {wait_seconds} сек",
                     parse_mode="html",
                     reply_to=getattr(message, "reply_to_msg_id", None),
+                    force_document=True,  # <-- ключ, чтобы PNG не сжимался
                 )
             except Exception as e:
                 return await utils.answer(
