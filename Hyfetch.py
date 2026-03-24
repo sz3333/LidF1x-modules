@@ -1,4 +1,4 @@
-# meta developer: Femboy4k.t.me
+# meta developer: ExclusiveFurry.t.me
 import subprocess
 import traceback
 from .. import loader, utils
