@@ -1,4 +1,4 @@
-# meta developer: @Femboy4k
+# meta developer: @ExclusiveFurry
 # scope: hikka_only
 # scope: hikka_min 1.6.2
 
