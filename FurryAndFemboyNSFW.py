@@ -1,4 +1,4 @@
-# meta developer: DepositUser.t.me
+# meta developer: ExclusiveFurry.t.me
 from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
@@ -36,7 +36,7 @@ class FurryCacheMod(loader.Module):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "channels",
-                ["@FurryFemboysPlace", "fur_pub_sas", "gexfor20"],
+                ["@FurryFemboysPlace", "femboyfurr", "gexfor20"],
                 "Список каналов для загрузки (через запятую или список)",
                 validator=loader.validators.Union(
                     loader.validators.Series(loader.validators.String()),
@@ -98,12 +98,12 @@ class FurryCacheMod(loader.Module):
             channels = [c.strip() for c in channels.split(",")]
 
         fallback_channels = [
-            "gexfor20",
-            "@gexfor20", 
-            "femboywishes",
+            "furry_femboy_world",
+            "@FopskyFemboyHootersTMUwU", 
+            "furr_hub",
             "@furry_yaoi_arts",
             "YeaFuta",
-            "@femboyart"
+            "@BasementFemboys"
         ]
         all_channels = list(dict.fromkeys(channels + fallback_channels))
         return all_channels
