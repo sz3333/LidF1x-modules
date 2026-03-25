@@ -1,4 +1,4 @@
-# meta developer: @ExclusiveFurry
+# meta developer: @ExclusiveFurry + Grok (починил Lid'у)
 # requires: playwright
 
 import os
@@ -7,32 +7,29 @@ from .. import loader, utils
 
 
 class WebShotMod(loader.Module):
-    """Делает скриншот сайта и отправляет как файл в чат"""
+    """Делает полный скриншот сайта и отправляет БЕЗ сжатия"""
 
     @loader.command()
     async def webshotcmd(self, message):
         """Использование: .webshot [секунды] <URL>"""
-        args = utils.get_args_raw(message)
+        args = utils.get_args_raw(message).strip()
 
         if not args:
             return await utils.answer(
                 message,
                 "❌ <b>Укажи URL!</b>\n\n"
-                "📌 Использование: <code>.webshot [секунды] URL</code>\n"
-                "📌 Пример: <code>.webshot 12 https://example.com</code>\n"
-                "📌 Без времени: <code>.webshot https://example.com</code>",
+                "📌 <code>.webshot https://example.com</code>\n"
+                "📌 <code>.webshot 15 https://example.com</code>"
             )
 
+        # парсим время и url
         parts = args.split(maxsplit=1)
         wait_seconds = 10
         url = args
 
-        if len(parts) == 2:
-            try:
-                wait_seconds = int(parts[0])
-                url = parts[1]
-            except ValueError:
-                url = args
+        if len(parts) == 2 and parts[0].isdigit():
+            wait_seconds = int(parts[0])
+            url = parts[1]
 
         if not url.startswith(("http://", "https://")):
             url = "https://" + url
@@ -45,114 +42,92 @@ class WebShotMod(loader.Module):
             return await utils.answer(
                 message,
                 "❌ <b>Playwright не установлен!</b>\n\n"
-                "Установи:\n"
                 "<code>pip install playwright</code>\n"
-                "<code>playwright install chromium</code>",
+                "<code>playwright install chromium</code>"
             )
 
-        try:
-            await utils.answer(message, f"🌐 <b>Открываю сайт...</b>\n🔗 <code>{url}</code>")
+        await utils.answer(message, f"🌐 <b>Открываю сайт...</b>\n🔗 <code>{url}</code>")
 
+        try:
             async with async_playwright() as pw:
                 browser = await pw.chromium.launch(headless=True)
 
                 context = await browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/124.0.0.0 Safari/537.36"
-                    ),
-                    viewport={"width": 1280, "height": 2000},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+                    viewport={"width": 1366, "height": 2000},
                     locale="ru-RU",
+                    device_scale_factor=1,
                 )
 
                 page = await context.new_page()
 
-                try:
-                    await page.goto(url, wait_until="networkidle", timeout=30_000)
-                except PlaywrightTimeout:
-                    pass  # если networkidle не дождались — продолжаем
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
                 await utils.answer(
                     message,
-                    f"⏳ <b>Жду загрузку...</b> ({wait_seconds} сек)\n🔗 <code>{url}</code>",
+                    f"⏳ <b>Жду {wait_seconds} сек для полной загрузки...</b>"
                 )
-
                 await page.wait_for_timeout(wait_seconds * 1000)
 
-                # Скролл для подгрузки lazy-контента
-                await page.evaluate(
-                    """
-                    async () => {
-                        await new Promise(resolve => {
-                            let totalHeight = 0;
-                            const distance = 300;
-                            const timer = setInterval(() => {
-                                window.scrollBy(0, distance);
-                                totalHeight += distance;
-                                if (totalHeight >= 1500) {
-                                    clearInterval(timer);
-                                    window.scrollTo(0, 0);
-                                    resolve();
-                                }
-                            }, 80);
-                        });
+                # мягкий скролл для lazy-load
+                await page.evaluate("""
+                    () => {
+                        window.scrollTo(0, document.body.scrollHeight / 3);
+                        return new Promise(r => setTimeout(r, 400));
                     }
-                """
-                )
+                """)
+                await page.evaluate("""
+                    () => window.scrollTo(0, 0)
+                """)
+                await page.wait_for_timeout(600)
 
-                await page.wait_for_timeout(500)
-
-                await utils.answer(
-                    message,
-                    f"📸 <b>Делаю скрин...</b>\n🔗 <code>{url}</code>",
-                )
+                await utils.answer(message, "📸 <b>Делаю скриншот...</b>")
 
                 with tempfile.NamedTemporaryFile(suffix=".png", delete=False, prefix="webshot_") as f:
                     tmp_path = f.name
 
-                await page.screenshot(path=tmp_path, full_page=True)
+                # Важно: full_page + scale = 1
+                await page.screenshot(
+                    path=tmp_path,
+                    full_page=True,
+                    scale=1,           # не даём браузеру делать 2x
+                    omit_background=False
+                )
 
                 await browser.close()
 
             if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
-                return await utils.answer(message, "❌ <b>Скриншот не создался.</b> Попробуй ещё раз.")
+                return await utils.answer(message, "❌ Скриншот пустой или не создался.")
 
-            # Отправка как несжатый файл
-            try:
-                await message.client.send_file(
-                    entity=message.to_id,
-                    file=tmp_path,
-                    caption=f"🌐 <b>{url}</b>\n⏱ Ожидание: {wait_seconds} сек",
-                    parse_mode="html",
-                    reply_to=getattr(message, "reply_to_msg_id", None),
-                    force_document=True,  # <-- ключ, чтобы PNG не сжимался
-                )
-            except Exception as e:
-                return await utils.answer(
-                    message,
-                    f"❌ <b>Не удалось отправить файл:</b> <code>{type(e).__name__}: {e}</code>"
-                )
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
+            # === САМОЕ ГЛАВНОЕ ИСПРАВЛЕНИЕ ===
+            await message.client.send_file(
+                entity=message.to_id,
+                file=tmp_path,
+                caption=f"🌐 <b>WebShot</b>\n🔗 <code>{url}</code>\n⏱ {wait_seconds} сек",
+                parse_mode="html",
+                reply_to=getattr(message, "reply_to_msg_id", None),
+                force_document=True,      # документ
+                attributes=[              # заставляем Telegram видеть это как настоящий файл
+                    types.DocumentAttributeFilename(
+                        file_name=f"webshot_{wait_seconds}s.png"
+                    )
+                ],
+            )
 
-            # Удаляем команду после успешной отправки
+            # чистим
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except:
+                    pass
+
             try:
                 await message.delete()
-            except Exception:
+            except:
                 pass
 
-        except PlaywrightTimeout:
-            await utils.answer(
-                message,
-                f"⏰ <b>Таймаут!</b> Сайт слишком долго не отвечал.\n🔗 <code>{url}</code>",
-            )
         except Exception as e:
             await utils.answer(
                 message,
-                f"❌ <b>Ошибка:</b> <code>{type(e).__name__}: {e}</code>",
+                f"❌ <b>Ошибка:</b> <code>{type(e).__name__}: {str(e)[:400]}</code>"
             )
