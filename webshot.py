@@ -1,4 +1,4 @@
-# meta developer: @ExclusiveFurry + Grok (починил Lid'у)
+# meta developer: @ExclusiveFurry
 # requires: playwright
 
 import os
