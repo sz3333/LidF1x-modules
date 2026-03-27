@@ -23,8 +23,8 @@ class DeletedCounterMod(loader.Module):
 
         await utils.answer(
             message,
-            f"<emoji document_id=5449449325434266744>❄️</emoji> **В твоих ЛС найдено {deleted_count} удалённых аккаунтов.**\n\n"
-            "_epstein_",
+            f"<a href="tg://emoji?id=5343908363925231352">❄️</a> **В твоих ЛС найдено {deleted_count} удалённых аккаунтов.**\n\n"
+            "//",
             parse_mode="md"
         )
 
@@ -60,6 +60,10 @@ class DeletedCounterMod(loader.Module):
             "• Чистить удалённые аккаунты из ЛС\n"
             "• Мониторить активность в чатах\n"
             "• Строить статистику (по желанию)\n\n"
-            "_epstein_"
+            "//"
         )
         await utils.answer(message, txt, parse_mode="md")
+
+# фурри фембой гей фулл хаус мяу мяу
+# ищу парня пишите в лс @ExclusiveFurry (реально был бы не против
+# // 
