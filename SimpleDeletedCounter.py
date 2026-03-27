@@ -45,8 +45,9 @@ class DeletedCounterMod(loader.Module):
         status = await utils.answer(message, "💫 <b>Сканирую ЛС…</b>")
 
         dialogs = await message.client.get_dialogs()
-        deleted = [d for d in dialogs if self._is_deleted(d.entity)]
-        total = len(dialogs)
+        pm_dialogs = [d for d in dialogs if isinstance(d.entity, User)]
+        deleted = [d for d in pm_dialogs if d.entity.deleted]
+        total = len(pm_dialogs)
 
         lines = []
         for d in deleted:
