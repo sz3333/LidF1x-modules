@@ -48,6 +48,7 @@ class DeletedCounterMod(loader.Module):
         pm_dialogs = [d for d in dialogs if isinstance(d.entity, User)]
         deleted = [d for d in pm_dialogs if d.entity.deleted]
         total = len(pm_dialogs)
+        total_no_bots = sum(1 for d in pm_dialogs if not d.entity.bot)
 
         lines = []
         for d in deleted:
@@ -61,8 +62,10 @@ class DeletedCounterMod(loader.Module):
         text = (
             f"<emoji document_id=5449449325434266744>❄️</emoji> <b>Удалённые аккаунты в ЛС</b>\n\n"
             f"👤 Всего диалогов: <b>{total}</b>\n"
+            f"👤 Без ботов: <b>{total_no_bots}</b>\n"
             f"🗑 Удалённых: <b>{len(deleted)}</b>\n"
-            f"📊 Доля: <b>{len(deleted) / total * 100:.1f}%</b>\n\n"
+            f"📊 Доля: <b>{len(deleted) / total * 100:.1f}%</b>\n"
+            f"📊 Доля без ботов: <b>{len(deleted) / total_no_bots * 100:.1f}%</b>\n\n"
             + (f"<blockquote>{preview}{more}</blockquote>" if deleted else "✅ Удалённых аккаунтов не найдено.")
         )
         await utils.answer(status, text)
