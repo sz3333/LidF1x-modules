@@ -1,18 +1,7 @@
-#  This file is part of SenkoGuardianModules (Grok Edition)
-#  Copyright (c) 2025 Senko
-#  This software is released under the MIT License.
-#  https://opensource.org/licenses/MIT
 
 __version__ = (1, 0, 0)
 
-# meta developer: @SenkoGuardianModules
-
-#  .------. .------. .------.
-#  |G.--. | |R.--. | |O.--. |
-#  | :/\: | | :(): | | :/\: |
-#  | :\/: | | ()() | | :\/: |
-#  | '--'G| | '--'R| | '--'O|
-#  `------' `------' `------'
+# meta developer: @ExclusiveFurry
 
 import re
 import os
