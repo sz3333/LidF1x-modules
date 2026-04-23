@@ -104,36 +104,64 @@ class YiffScrollerMod(loader.Module):
             row = cursor.fetchone()
             return (row[0], row[1], "unknown") if row else None
 
-    # ==================== Gallery next_handler ====================
+    # ==================== Gallery ====================
 
-    async def _send_random(self, message: Message):
-        """Отправляет случайное медиа из кеша напрямую через юзербота"""
+    async def _send_furr(self, chat_id, prev_msg_id=None):
+        """Отправляет случайное медиа с кнопкой Ещё, удаляет предыдущее"""
+        from telethon.tl.custom import Button
         for _ in range(5):
             row = self._get_random_media()
             if not row:
-                return False
-            chat_id, msg_id, *_ = row
+                return
+            src_chat_id, msg_id, *_ = row
             try:
-                msg = await self.client.get_messages(chat_id, ids=msg_id)
-                if not msg or not msg.media:
+                src_msg = await self.client.get_messages(src_chat_id, ids=msg_id)
+                if not src_msg or not src_msg.media:
                     continue
-                await self.client.send_file(
-                    message.chat_id,
-                    msg.media,
+
+                if prev_msg_id:
+                    try:
+                        await self.client.delete_messages(chat_id, [prev_msg_id])
+                    except Exception:
+                        pass
+
+                sent = await self.client.send_file(
+                    chat_id,
+                    src_msg.media,
                     caption=f"<i>🐾 YiffScroller {utils.ascii_face()}</i>",
                     parse_mode="html",
+                    buttons=[
+                        [Button.inline("➡️ Ещё", data=b"furr_next"),
+                         Button.inline("✖️ Стоп", data=b"furr_stop")],
+                    ],
                 )
                 self._increment_stat("used")
-                return True
+                return sent
             except Exception as e:
                 logger.warning(f"YiffScroller send error: {e}")
-        return False
+
+    @loader.raw_handler(events.CallbackQuery(data=b"furr_next"))
+    async def _furr_next_handler(self, event):
+        """Колбэк кнопки Ещё"""
+        await event.answer()
+        prev_id = event.message_id
+        chat_id = event.chat_id
+        await self._send_furr(chat_id, prev_msg_id=prev_id)
+
+    @loader.raw_handler(events.CallbackQuery(data=b"furr_stop"))
+    async def _furr_stop_handler(self, event):
+        """Колбэк кнопки Стоп"""
+        await event.answer("Галерея закрыта 🐾")
+        try:
+            await self.client.delete_messages(event.chat_id, [event.message_id])
+        except Exception:
+            pass
 
     # ==================== Commands ====================
 
-    @loader.command(ru_doc="Отправить случайную пикчу из кеша 🐾")
+    @loader.command(ru_doc="Открыть скроллер пикч из кеша 🐾")
     async def furrcmd(self, message: Message):
-        """Send random furry pic from cache"""
+        """Open furry scroller from cache"""
         cursor = self._conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM media")
         count = cursor.fetchone()[0]
@@ -141,9 +169,7 @@ class YiffScrollerMod(loader.Module):
             await utils.answer(message, self.strings("no_cache"))
             return
         await message.delete()
-        ok = await self._send_random(message)
-        if not ok:
-            await utils.answer(message, self.strings("error"))
+        await self._send_furr(message.chat_id)
 
     async def furrloadcmd(self, message: Message):
         """Загружает медиа из доступных каналов в кеш"""
