@@ -106,7 +106,6 @@ class YiffScrollerMod(loader.Module):
             row = cursor.fetchone()
             return (row[0], row[1], "unknown") if row else None
 
-    # ==================== Gallery ====================
 
     async def _get_media_file_id(self, src_chat_id, msg_id):
         """Скачивает медиа через юзербота и загружает боту, возвращает file_id"""
@@ -193,7 +192,6 @@ class YiffScrollerMod(loader.Module):
         await call.answer("Галерея закрыта 🐾")
         await call.delete()
 
-    # ==================== Commands ====================
 
     @loader.command(ru_doc="Открыть скроллер пикч из кеша 🐾")
     async def furrcmd(self, message: Message):
@@ -265,8 +263,6 @@ class YiffScrollerMod(loader.Module):
         cursor.execute("DELETE FROM stats")
         self._conn.commit()
         await utils.answer(message, self.strings("cleared"))
-
-    # ==================== e621 ====================
 
     async def e6cmd(self, message):
         """.e6 тег;тег;тег количество"""
