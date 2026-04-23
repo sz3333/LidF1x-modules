@@ -107,7 +107,7 @@ class YiffScrollerMod(loader.Module):
     # ==================== Gallery next_handler ====================
 
     async def _next_cached(self):
-        """next_handler для галереи — скачивает медиа и возвращает байты"""
+        """next_handler для галереи — скачивает медиа и отправляет боту, возвращает file_id"""
         for _ in range(5):  # до 5 попыток на случай битых записей
             row = self._get_random_media()
             if not row:
@@ -116,11 +116,40 @@ class YiffScrollerMod(loader.Module):
             chat_id, msg_id, *_ = row
             try:
                 msg = await self.client.get_messages(chat_id, ids=msg_id)
-                if msg and msg.media:
-                    data = await self.client.download_media(msg.media, bytes)
-                    if data:
-                        self._increment_stat("used")
-                        return data
+                if not msg or not msg.media:
+                    continue
+
+                # Скачиваем в память
+                data = await self.client.download_media(msg.media, bytes)
+                if not data:
+                    continue
+
+                # Определяем тип медиа
+                from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+                import io
+
+                buf = io.BytesIO(data)
+                buf.name = "photo.jpg"
+
+                if isinstance(msg.media, MessageMediaDocument):
+                    mime = msg.media.document.mime_type or ""
+                    if mime.startswith("video"):
+                        buf.name = "video.mp4"
+                    elif mime.startswith("image/gif"):
+                        buf.name = "anim.gif"
+                    else:
+                        buf.name = "photo.jpg"
+
+                # Отправляем боту чтобы получить валидный file_id
+                sent = await self.inline.bot.send_photo(
+                    self.inline._bot_id,
+                    buf,
+                )
+                if sent and sent.photo:
+                    file_id = sent.photo[-1].file_id
+                    self._increment_stat("used")
+                    return file_id
+
             except Exception as e:
                 logger.warning(f"YiffScroller gallery fetch error: {e}")
 
