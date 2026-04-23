@@ -1,20 +1,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
-# If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/
 
-# meta developer: ExclusiveFurry.t.me
+# meta developer: ExclusiveFurry.t.me (optimized by neko 😼)
 # scope: inline
 # scope: hikka_only
 # scope: hikka_min 1.3.0
 
-from telethon import events
 from .. import loader, utils
 from telethon.tl.types import Message
-from ..inline.types import InlineQuery
 import random
 import logging
 import asyncio
 import sqlite3
-import os
 import aiohttp
 
 logger = logging.getLogger(__name__)
@@ -23,264 +19,249 @@ DB_PATH = "furry_cache.db"
 
 @loader.tds
 class YiffScrollerMod(loader.Module):
-    """Няшный Furry мод с кэшем 🐾 + галерея + арты e621"""
+    """Няшный Furry мод с кешем 🐾 + быстрая галерея"""
 
     strings = {
         "name": "YiffScroller",
-        "fetching": "Мяу~ тяну из хранилища арт 🐾",
-        "fetching_remote": "Мурр~ загружаю сообщения с канала… потерпи котейку~",
-        "no_media": "Ничего не нашёл, даже хвостик не видно :(",
-        "no_cache": "Кеш пуст! Сначала загрузи медиа командой .furrload",
-        "error": "Упс... что-то поломалось 🧨",
-        "cleared": "Кеш очищен! Чисто как в ванной после тебя 🛁",
-        "info": "📦 В кеше: <b>{}</b> медиа\n🔁 Запросов: <b>{}</b>",
-        "channel_error": "Все каналы недоступны 😿 Попробуй добавить свой канал командой .furrset <канал>",
-        "channel_set": "✅ Канал установлен: <b>{}</b>",
+        "no_cache": "Кеш пуст! Сначала .furrload",
+        "cleared": "Кеш очищен 🧹",
+        "info": "📦 В кеше: <b>{}</b>\n🔁 Использовано: <b>{}</b>",
     }
 
     def __init__(self):
         self._init_db()
         self.running = False
+
+        # ⚡ RAM кеш
+        self._ram_cache = []
+        self._ram_limit = 30
+
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "channels",
-                ["@FurryFemboysPlace", "@fur_pub_sas", "@gexfor20", "@FemboysSpanish", "@BadFurryFemboy", "@paws_qq", "@furry_yaoi_arts"],
-                "Список каналов для загрузки"
+                [
+                    "@FurryFemboysPlace",
+                    "@fur_pub_sas",
+                    "@gexfor20",
+                    "@FemboysSpanish",
+                    "@BadFurryFemboy",
+                    "@paws_qq",
+                    "@furry_yaoi_arts",
+                ],
+                "Каналы"
             ),
             loader.ConfigValue(
                 "max_messages",
                 2000,
-                "Максимум сообщений для загрузки"
+                "Лимит загрузки"
             )
         )
 
-    # ==================== DB ====================
+    # ================= DB =================
 
     def _init_db(self):
         self._conn = sqlite3.connect(DB_PATH)
-        cursor = self._conn.cursor()
-        cursor.execute("""CREATE TABLE IF NOT EXISTS media (
+        cur = self._conn.cursor()
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY,
             chat_id INTEGER,
             message_id INTEGER,
             UNIQUE(chat_id, message_id)
         )""")
-        try:
-            cursor.execute("SELECT channel_name FROM media LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE media ADD COLUMN channel_name TEXT DEFAULT 'unknown'")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS stats (
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS stats (
             key TEXT PRIMARY KEY,
             value INTEGER
         )""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS channels (
-            id INTEGER PRIMARY KEY,
-            name TEXT UNIQUE,
-            chat_id INTEGER,
-            accessible INTEGER DEFAULT 1
-        )""")
+
         self._conn.commit()
 
     def _increment_stat(self, key):
-        cursor = self._conn.cursor()
-        cursor.execute("INSERT OR IGNORE INTO stats (key, value) VALUES (?, 0)", (key,))
-        cursor.execute("UPDATE stats SET value = value + 1 WHERE key = ?", (key,))
+        cur = self._conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO stats VALUES (?, 0)", (key,))
+        cur.execute("UPDATE stats SET value = value + 1 WHERE key = ?", (key,))
         self._conn.commit()
 
     def _get_stat(self, key):
-        cursor = self._conn.cursor()
-        cursor.execute("SELECT value FROM stats WHERE key = ?", (key,))
-        res = cursor.fetchone()
+        cur = self._conn.cursor()
+        cur.execute("SELECT value FROM stats WHERE key = ?", (key,))
+        res = cur.fetchone()
         return res[0] if res else 0
 
     def _get_random_media(self):
-        """Возвращает случайный (chat_id, message_id, channel_name) из кеша"""
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute("SELECT chat_id, message_id, channel_name FROM media ORDER BY RANDOM() LIMIT 1")
-            return cursor.fetchone()
-        except sqlite3.OperationalError:
-            cursor.execute("SELECT chat_id, message_id FROM media ORDER BY RANDOM() LIMIT 1")
-            row = cursor.fetchone()
-            return (row[0], row[1], "unknown") if row else None
+        cur = self._conn.cursor()
+        cur.execute("SELECT chat_id, message_id FROM media ORDER BY RANDOM() LIMIT 1")
+        return cur.fetchone()
 
-    # ==================== Gallery next_handler ====================
+    # ================= ⚡ FAST GALLERY =================
 
     async def _next_cached(self):
-        """next_handler для галереи — скачивает медиа и отправляет боту, возвращает file_id"""
-        for _ in range(5):  # до 5 попыток на случай битых записей
+        # 🐾 1. RAM кеш
+        if self._ram_cache:
+            return random.choice(self._ram_cache)
+
+        batch = []
+
+        # 🐾 2. грузим пачку
+        for _ in range(10):
             row = self._get_random_media()
             if not row:
-                return "https://i.imgur.com/removed.png"
+                continue
 
-            chat_id, msg_id, *_ = row
+            chat_id, msg_id = row
+
             try:
                 msg = await self.client.get_messages(chat_id, ids=msg_id)
                 if not msg or not msg.media:
                     continue
 
-                # Скачиваем в память
-                data = await self.client.download_media(msg.media, bytes)
-                if not data:
+                file = msg.file
+
+                # ⚡ если есть URL
+                if file and file.url:
+                    batch.append(file.url)
                     continue
 
-                # Определяем имя файла по типу медиа
-                from telethon.tl.types import MessageMediaDocument
-                from aiogram.types import BufferedInputFile
-
-                filename = "photo.jpg"
-                if isinstance(msg.media, MessageMediaDocument):
-                    mime = msg.media.document.mime_type or ""
-                    if mime.startswith("video"):
-                        filename = "video.mp4"
-                    elif mime.startswith("image/gif"):
-                        filename = "anim.gif"
-
-                # Отправляем боту чтобы получить валидный file_id
-                input_file = BufferedInputFile(data, filename=filename)
-                sent = await self.inline.bot.send_photo(
-                    self.tg_id,
-                    input_file,
-                )
-                if sent and sent.photo:
-                    file_id = sent.photo[-1].file_id
-                    self._increment_stat("used")
-                    return file_id
+                # fallback → bytes
+                data = await self.client.download_media(msg.media, bytes)
+                if data:
+                    batch.append(data)
 
             except Exception as e:
-                logger.warning(f"YiffScroller gallery fetch error: {e}")
+                logger.warning(f"RAM load error: {e}")
 
-        return "https://i.imgur.com/removed.png"
+        if not batch:
+            return "https://i.imgur.com/removed.png"
 
-    # ==================== Commands ====================
+        # 🧠 кладём в RAM
+        self._ram_cache.extend(batch)
+        self._ram_cache = self._ram_cache[-self._ram_limit:]
 
-    @loader.command(ru_doc="Открыть галерею пикч из кеша 🐾")
+        self._increment_stat("used")
+
+        return random.choice(self._ram_cache)
+
+    # ================= COMMANDS =================
+
+    @loader.command()
     async def furrcmd(self, message: Message):
-        """Open furry gallery from cache"""
-        cursor = self._conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM media")
-        count = cursor.fetchone()[0]
+        cur = self._conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM media")
+        count = cur.fetchone()[0]
+
         if not count:
             await utils.answer(message, self.strings("no_cache"))
             return
 
         await self.inline.gallery(
-            caption=lambda: f"<i>🐾 YiffScroller {utils.ascii_face()}</i>",
             message=message,
             next_handler=self._next_cached,
+            caption=lambda: "🐾 YiffScroller",
             preload=3,
         )
 
     async def furrloadcmd(self, message: Message):
-        """Загружает медиа из доступных каналов в кеш"""
-        await utils.answer(message, "🔍 Ищу доступные каналы…")
-        channels = self.config["channels"]
-        if isinstance(channels, str):
-            channels = [c.strip() for c in channels.split(",")]
-        total_loaded = 0
-        for ch in channels:
+        await utils.answer(message, "🔄 Загружаю...")
+
+        total = 0
+
+        for ch in self.config["channels"]:
             try:
-                msgs = await message.client.get_messages(ch, limit=self.config["max_messages"])
-                cursor = self._conn.cursor()
+                msgs = await message.client.get_messages(
+                    ch,
+                    limit=self.config["max_messages"]
+                )
+
+                cur = self._conn.cursor()
+
                 for msg in msgs:
                     if msg.media:
-                        cursor.execute(
-                            "INSERT OR IGNORE INTO media (chat_id, message_id, channel_name) VALUES (?, ?, ?)",
-                            (msg.chat_id, msg.id, ch)
+                        cur.execute(
+                            "INSERT OR IGNORE INTO media (chat_id, message_id) VALUES (?, ?)",
+                            (msg.chat_id, msg.id)
                         )
-                        total_loaded += 1
+                        total += 1
+
                 self._conn.commit()
+
             except Exception:
                 continue
-            await asyncio.sleep(0.3)
-        await utils.answer(message, f"✅ Загружено {total_loaded} медиа файлов!")
 
-    async def furrsetcmd(self, message: Message):
-        """Добавляет новый канал в список: .furrset @channel"""
-        args = utils.get_args_raw(message)
-        if not args:
-            await utils.answer(message, "Использование: .furrset @channel_name")
-            return
-        ch = args.strip()
-        try:
-            await message.client.get_entity(ch)
-            channels = self.config["channels"]
-            if isinstance(channels, str):
-                channels = [c.strip() for c in channels.split(",")]
-            if ch not in channels:
-                channels.append(ch)
-                self.config["channels"] = channels
-            await utils.answer(message, self.strings("channel_set").format(ch))
-        except Exception:
-            await utils.answer(message, f"❌ Канал {ch} недоступен")
+            await asyncio.sleep(0.3)
+
+        await utils.answer(message, f"✅ Загружено: {total}")
 
     async def furrinfocmd(self, message: Message):
-        """Показывает статистику кеша"""
-        cursor = self._conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM media")
-        count = cursor.fetchone()[0]
+        cur = self._conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM media")
+        count = cur.fetchone()[0]
+
         uses = self._get_stat("used")
+
         await utils.answer(message, self.strings("info").format(count, uses))
 
     async def furrclearcmd(self, message: Message):
-        """Очищает весь кеш"""
-        cursor = self._conn.cursor()
-        cursor.execute("DELETE FROM media")
-        cursor.execute("DELETE FROM stats")
+        cur = self._conn.cursor()
+        cur.execute("DELETE FROM media")
+        cur.execute("DELETE FROM stats")
         self._conn.commit()
+
+        self._ram_cache.clear()
+
         await utils.answer(message, self.strings("cleared"))
 
-    # ==================== e621 ====================
+    # ================= e621 =================
 
     async def e6cmd(self, message):
-        """.e6 тег;тег;тег количество"""
         args = utils.get_args_raw(message).split()
+
         if len(args) < 2:
-            await utils.answer(message, "❌ Используй: `.e6 femboy;catboy 5`")
-            return
+            return await utils.answer(message, "❌ .e6 tag1;tag2 5")
+
         tags = args[0].split(";")
-        try:
-            count = int(args[1])
-        except ValueError:
-            await utils.answer(message, "❌ Количество должно быть числом")
-            return
+        count = int(args[1])
+
         self.running = True
-        await utils.answer(message, f"🧦 Отправляю {count} артов с тегами: {', '.join(tags)}")
+
+        await utils.answer(message, f"🎨 {count} артов...")
+
         asyncio.create_task(self._send_e6(message, tags, count))
 
     async def _send_e6(self, message, tags, count):
-        headers = {"User-Agent": "HikkaBot/1.0 by Lidik"}
+        headers = {"User-Agent": "HikkaBot/1.0"}
         sent = 0
-        tag_query = "+".join(tags)
+        query = "+".join(tags)
+
         async with aiohttp.ClientSession() as session:
             while self.running and sent < count:
-                url = f"https://e621.net/posts.json?tags={tag_query}+order:random&limit=1"
                 try:
+                    url = f"https://e621.net/posts.json?tags={query}+order:random&limit=1"
+
                     async with session.get(url, headers=headers) as resp:
                         if resp.status != 200:
-                            await asyncio.sleep(10)
+                            await asyncio.sleep(5)
                             continue
+
                         data = await resp.json()
-                        posts = data.get("posts", [])
-                        for post in posts:
-                            file_url = post.get("file", {}).get("url")
-                            if not file_url:
-                                continue
-                            try:
-                                await message.client.send_file(
-                                    message.chat_id,
-                                    file_url,
-                                    caption=f"🎨 Теги: {', '.join(tags)}"
-                                )
-                                sent += 1
-                            except Exception:
-                                continue
-                            await asyncio.sleep(random.randint(5, 10))
+
+                        for post in data.get("posts", []):
+                            file_url = post["file"]["url"]
+
+                            await message.client.send_file(
+                                message.chat_id,
+                                file_url,
+                                caption=f"🎨 {', '.join(tags)}"
+                            )
+
+                            sent += 1
+                            await asyncio.sleep(random.randint(3, 7))
+
                 except Exception:
                     await asyncio.sleep(5)
-        await message.respond("✅ Отправка завершена.")
+
+        await message.respond("✅ Готово")
 
     async def stop_e6cmd(self, message):
-        """Остановить e621"""
         self.running = False
-        await utils.answer(message, "🛑 e621 остановлен.")
+        await utils.answer(message, "🛑 Стоп")
