@@ -124,26 +124,23 @@ class YiffScrollerMod(loader.Module):
                 if not data:
                     continue
 
-                # Определяем тип медиа
-                from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
-                import io
+                # Определяем имя файла по типу медиа
+                from telethon.tl.types import MessageMediaDocument
+                from aiogram.types import BufferedInputFile
 
-                buf = io.BytesIO(data)
-                buf.name = "photo.jpg"
-
+                filename = "photo.jpg"
                 if isinstance(msg.media, MessageMediaDocument):
                     mime = msg.media.document.mime_type or ""
                     if mime.startswith("video"):
-                        buf.name = "video.mp4"
+                        filename = "video.mp4"
                     elif mime.startswith("image/gif"):
-                        buf.name = "anim.gif"
-                    else:
-                        buf.name = "photo.jpg"
+                        filename = "anim.gif"
 
                 # Отправляем боту чтобы получить валидный file_id
+                input_file = BufferedInputFile(data, filename=filename)
                 sent = await self.inline.bot.send_photo(
-                    self.inline._bot_id,
-                    buf,
+                    self.tg_id,
+                    input_file,
                 )
                 if sent and sent.photo:
                     file_id = sent.photo[-1].file_id
