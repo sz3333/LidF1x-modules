@@ -106,56 +106,90 @@ class YiffScrollerMod(loader.Module):
 
     # ==================== Gallery ====================
 
+    async def _get_media_file_id(self, src_chat_id, msg_id):
+        """Скачивает медиа через юзербота и загружает боту, возвращает file_id"""
+        from aiogram.types import BufferedInputFile
+        src_msg = await self.client.get_messages(src_chat_id, ids=msg_id)
+        if not src_msg or not src_msg.media:
+            return None
+        data = await self.client.download_media(src_msg.media, bytes)
+        if not data:
+            return None
+        from telethon.tl.types import MessageMediaDocument
+        filename = "photo.jpg"
+        if isinstance(src_msg.media, MessageMediaDocument):
+            mime = src_msg.media.document.mime_type or ""
+            if mime.startswith("video"):
+                filename = "video.mp4"
+            elif "gif" in mime:
+                filename = "anim.gif"
+        input_file = BufferedInputFile(data, filename=filename)
+        if filename == "video.mp4":
+            sent = await self.inline.bot.send_video(self.tg_id, input_file)
+            return sent.video.file_id if sent and sent.video else None
+        else:
+            sent = await self.inline.bot.send_photo(self.tg_id, input_file)
+            return sent.photo[-1].file_id if sent and sent.photo else None
+
     async def _send_furr(self, chat_id, prev_msg_id=None):
-        """Отправляет случайное медиа с кнопкой Ещё, удаляет предыдущее"""
-        from telethon.tl.custom import Button
+        """Получает file_id через бота и отправляет галерею с кнопками"""
         for _ in range(5):
             row = self._get_random_media()
             if not row:
                 return
             src_chat_id, msg_id, *_ = row
             try:
-                src_msg = await self.client.get_messages(src_chat_id, ids=msg_id)
-                if not src_msg or not src_msg.media:
+                file_id = await self._get_media_file_id(src_chat_id, msg_id)
+                if not file_id:
                     continue
 
                 if prev_msg_id:
                     try:
-                        await self.client.delete_messages(chat_id, [prev_msg_id])
+                        await self.inline.bot.delete_message(chat_id, prev_msg_id)
                     except Exception:
                         pass
 
-                sent = await self.client.send_file(
-                    chat_id,
-                    src_msg.media,
-                    caption=f"<i>🐾 YiffScroller {utils.ascii_face()}</i>",
-                    parse_mode="html",
-                    buttons=[
-                        [Button.inline("➡️ Ещё", data=b"furr_next"),
-                         Button.inline("✖️ Стоп", data=b"furr_stop")],
+                        await self.inline.form(
+                    message=chat_id,
+                    photo=file_id,
+                    text=f"<i>🐾 YiffScroller {utils.ascii_face()}</i>",
+                    reply_markup=[
+                        [{"text": "➡️ Ещё", "callback": self._furr_next_cb},
+                         {"text": "✖️ Стоп", "callback": self._furr_stop_cb}],
                     ],
                 )
                 self._increment_stat("used")
-                return sent
+                return
             except Exception as e:
                 logger.warning(f"YiffScroller send error: {e}")
 
-    @loader.raw_handler(events.CallbackQuery(data=b"furr_next"))
-    async def _furr_next_handler(self, event):
-        """Колбэк кнопки Ещё"""
-        await event.answer()
-        prev_id = event.message_id
-        chat_id = event.chat_id
-        await self._send_furr(chat_id, prev_msg_id=prev_id)
+    async def _furr_next_cb(self, call):
+        await call.answer()
+        for _ in range(5):
+            row = self._get_random_media()
+            if not row:
+                return
+            src_chat_id, msg_id, *_ = row
+            try:
+                file_id = await self._get_media_file_id(src_chat_id, msg_id)
+                if not file_id:
+                    continue
+                await call.edit(
+                    text=f"<i>🐾 YiffScroller {utils.ascii_face()}</i>",
+                    photo=file_id,
+                    reply_markup=[
+                        [{"text": "➡️ Ещё", "callback": self._furr_next_cb},
+                         {"text": "✖️ Стоп", "callback": self._furr_stop_cb}],
+                    ],
+                )
+                self._increment_stat("used")
+                return
+            except Exception as e:
+                logger.warning(f"YiffScroller next error: {e}")
 
-    @loader.raw_handler(events.CallbackQuery(data=b"furr_stop"))
-    async def _furr_stop_handler(self, event):
-        """Колбэк кнопки Стоп"""
-        await event.answer("Галерея закрыта 🐾")
-        try:
-            await self.client.delete_messages(event.chat_id, [event.message_id])
-        except Exception:
-            pass
+    async def _furr_stop_cb(self, call):
+        await call.answer("Галерея закрыта 🐾")
+        await call.delete()
 
     # ==================== Commands ====================
 
