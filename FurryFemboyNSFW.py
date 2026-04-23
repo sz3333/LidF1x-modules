@@ -56,7 +56,7 @@ class YiffScrollerMod(loader.Module):
             )
         )
 
-    # ==================== DB ====================
+    
 
     def _init_db(self):
         self._conn = sqlite3.connect(DB_PATH)
