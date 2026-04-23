@@ -1,6 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
-
-# meta developer: ExclusiveFurry.t.me (optimized by neko 😼)
+# meta developer: ExclusiveFurry.t.me (clean rewrite 😼)
 # scope: inline
 # scope: hikka_only
 # scope: hikka_min 1.3.0
@@ -11,7 +9,6 @@ import random
 import logging
 import asyncio
 import sqlite3
-import aiohttp
 
 logger = logging.getLogger(__name__)
 DB_PATH = "furry_cache.db"
@@ -19,22 +16,23 @@ DB_PATH = "furry_cache.db"
 
 @loader.tds
 class YiffScrollerMod(loader.Module):
-    """Няшный Furry мод с кешем 🐾 + быстрая галерея"""
+    """🐾 Furry gallery with RAM cache (fast & clean)"""
 
     strings = {
         "name": "YiffScroller",
-        "no_cache": "Кеш пуст! Сначала .furrload",
+        "no_cache": "Кеш пуст, сначала .furrload",
         "cleared": "Кеш очищен 🧹",
-        "info": "📦 В кеше: <b>{}</b>\n🔁 Использовано: <b>{}</b>",
+        "info": "📦 Кеш: <b>{}</b>\n🔁 Использований: <b>{}</b>",
     }
 
     def __init__(self):
         self._init_db()
-        self.running = False
 
-        # ⚡ RAM кеш
+        # ⚡ RAM cache (bytes only)
         self._ram_cache = []
-        self._ram_limit = 30
+        self._ram_limit = 40
+
+        self.running = False
 
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
@@ -48,13 +46,13 @@ class YiffScrollerMod(loader.Module):
                     "@paws_qq",
                     "@furry_yaoi_arts",
                 ],
-                "Каналы"
+                "Channels list"
             ),
             loader.ConfigValue(
                 "max_messages",
-                2000,
-                "Лимит загрузки"
-            )
+                1500,
+                "Load limit per channel"
+            ),
         )
 
     # ================= DB =================
@@ -63,48 +61,52 @@ class YiffScrollerMod(loader.Module):
         self._conn = sqlite3.connect(DB_PATH)
         cur = self._conn.cursor()
 
-        cur.execute("""CREATE TABLE IF NOT EXISTS media (
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY,
             chat_id INTEGER,
             message_id INTEGER,
             UNIQUE(chat_id, message_id)
-        )""")
+        )
+        """)
 
-        cur.execute("""CREATE TABLE IF NOT EXISTS stats (
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS stats (
             key TEXT PRIMARY KEY,
             value INTEGER
-        )""")
+        )
+        """)
 
         self._conn.commit()
-
-    def _increment_stat(self, key):
-        cur = self._conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO stats VALUES (?, 0)", (key,))
-        cur.execute("UPDATE stats SET value = value + 1 WHERE key = ?", (key,))
-        self._conn.commit()
-
-    def _get_stat(self, key):
-        cur = self._conn.cursor()
-        cur.execute("SELECT value FROM stats WHERE key = ?", (key,))
-        res = cur.fetchone()
-        return res[0] if res else 0
 
     def _get_random_media(self):
         cur = self._conn.cursor()
         cur.execute("SELECT chat_id, message_id FROM media ORDER BY RANDOM() LIMIT 1")
         return cur.fetchone()
 
-    # ================= ⚡ FAST GALLERY =================
+    def _inc(self, key):
+        cur = self._conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO stats VALUES (?, 0)", (key,))
+        cur.execute("UPDATE stats SET value = value + 1 WHERE key = ?", (key,))
+        self._conn.commit()
+
+    def _stat(self, key):
+        cur = self._conn.cursor()
+        cur.execute("SELECT value FROM stats WHERE key=?", (key,))
+        r = cur.fetchone()
+        return r[0] if r else 0
+
+    # ================= FAST GALLERY =================
 
     async def _next_cached(self):
-        # 🐾 1. RAM кеш
+        # ⚡ 1. RAM first
         if self._ram_cache:
             return random.choice(self._ram_cache)
 
         batch = []
 
-        # 🐾 2. грузим пачку
-        for _ in range(10):
+        # ⚡ 2. preload batch from DB
+        for _ in range(12):
             row = self._get_random_media()
             if not row:
                 continue
@@ -113,32 +115,27 @@ class YiffScrollerMod(loader.Module):
 
             try:
                 msg = await self.client.get_messages(chat_id, ids=msg_id)
+
                 if not msg or not msg.media:
                     continue
 
-                file = msg.file
-
-                # ⚡ если есть URL
-                if file and file.url:
-                    batch.append(file.url)
-                    continue
-
-                # fallback → bytes
+                # 💥 Telethon way: ONLY bytes
                 data = await self.client.download_media(msg.media, bytes)
+
                 if data:
                     batch.append(data)
 
             except Exception as e:
-                logger.warning(f"RAM load error: {e}")
+                logger.warning(f"cache load error: {e}")
 
         if not batch:
             return "https://i.imgur.com/removed.png"
 
-        # 🧠 кладём в RAM
+        # 🧠 store in RAM
         self._ram_cache.extend(batch)
         self._ram_cache = self._ram_cache[-self._ram_limit:]
 
-        self._increment_stat("used")
+        self._inc("used")
 
         return random.choice(self._ram_cache)
 
@@ -157,12 +154,12 @@ class YiffScrollerMod(loader.Module):
         await self.inline.gallery(
             message=message,
             next_handler=self._next_cached,
-            caption=lambda: "🐾 YiffScroller",
             preload=3,
+            caption=lambda: "🐾 YiffScroller"
         )
 
     async def furrloadcmd(self, message: Message):
-        await utils.answer(message, "🔄 Загружаю...")
+        await utils.answer(message, "🔄 Loading cache...")
 
         total = 0
 
@@ -188,16 +185,16 @@ class YiffScrollerMod(loader.Module):
             except Exception:
                 continue
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.2)
 
-        await utils.answer(message, f"✅ Загружено: {total}")
+        await utils.answer(message, f"✅ Loaded: {total}")
 
     async def furrinfocmd(self, message: Message):
         cur = self._conn.cursor()
         cur.execute("SELECT COUNT(*) FROM media")
         count = cur.fetchone()[0]
 
-        uses = self._get_stat("used")
+        uses = self._stat("used")
 
         await utils.answer(message, self.strings("info").format(count, uses))
 
@@ -220,16 +217,22 @@ class YiffScrollerMod(loader.Module):
             return await utils.answer(message, "❌ .e6 tag1;tag2 5")
 
         tags = args[0].split(";")
-        count = int(args[1])
+
+        try:
+            count = int(args[1])
+        except:
+            return await utils.answer(message, "❌ number invalid")
 
         self.running = True
 
-        await utils.answer(message, f"🎨 {count} артов...")
+        await utils.answer(message, f"🎨 Sending {count} posts...")
 
-        asyncio.create_task(self._send_e6(message, tags, count))
+        asyncio.create_task(self._e6_worker(message, tags, count))
 
-    async def _send_e6(self, message, tags, count):
-        headers = {"User-Agent": "HikkaBot/1.0"}
+    async def _e6_worker(self, message, tags, count):
+        import aiohttp
+
+        headers = {"User-Agent": "HikkaBot"}
         sent = 0
         query = "+".join(tags)
 
@@ -238,12 +241,12 @@ class YiffScrollerMod(loader.Module):
                 try:
                     url = f"https://e621.net/posts.json?tags={query}+order:random&limit=1"
 
-                    async with session.get(url, headers=headers) as resp:
-                        if resp.status != 200:
+                    async with session.get(url, headers=headers) as r:
+                        if r.status != 200:
                             await asyncio.sleep(5)
                             continue
 
-                        data = await resp.json()
+                        data = await r.json()
 
                         for post in data.get("posts", []):
                             file_url = post["file"]["url"]
@@ -255,13 +258,13 @@ class YiffScrollerMod(loader.Module):
                             )
 
                             sent += 1
-                            await asyncio.sleep(random.randint(3, 7))
+                            await asyncio.sleep(4)
 
                 except Exception:
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(3)
 
-        await message.respond("✅ Готово")
+        await message.respond("✅ Done")
 
     async def stop_e6cmd(self, message):
         self.running = False
-        await utils.answer(message, "🛑 Стоп")
+        await utils.answer(message, "🛑 stopped")
