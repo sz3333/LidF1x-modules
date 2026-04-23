@@ -107,20 +107,22 @@ class YiffScrollerMod(loader.Module):
     # ==================== Gallery next_handler ====================
 
     async def _next_cached(self):
-        """next_handler для галереи — достаёт случайный файл из кеша и возвращает URL/путь"""
-        row = self._get_random_media()
-        if not row:
-            return "https://i.imgur.com/removed.png"  # заглушка если кеш пуст
+        """next_handler для галереи — скачивает медиа и возвращает байты"""
+        for _ in range(5):  # до 5 попыток на случай битых записей
+            row = self._get_random_media()
+            if not row:
+                return "https://i.imgur.com/removed.png"
 
-        chat_id, msg_id, *_ = row
-        try:
-            msg = await self.client.get_messages(chat_id, ids=msg_id)
-            if msg and msg.media:
-                file = await self.client.download_media(msg.media)
-                self._increment_stat("used")
-                return file
-        except Exception as e:
-            logger.warning(f"YiffScroller gallery fetch error: {e}")
+            chat_id, msg_id, *_ = row
+            try:
+                msg = await self.client.get_messages(chat_id, ids=msg_id)
+                if msg and msg.media:
+                    data = await self.client.download_media(msg.media, bytes)
+                    if data:
+                        self._increment_stat("used")
+                        return data
+            except Exception as e:
+                logger.warning(f"YiffScroller gallery fetch error: {e}")
 
         return "https://i.imgur.com/removed.png"
 
