@@ -34,7 +34,7 @@ class YiffScrollerMod(loader.Module):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "channels",
-                ["@FurryFemboysPlace,@gexfor20, @FemboysSpanish, @BadFurryFemboy, @paws_qq,@furry_yaoi_arts"],
+                ["FurryFemboysPlace,gexfor20, FemboysSpanish,BadFurryFemboy, paws_qq,furry_yaoi_arts"],
                 "Список каналов для загрузки",
                 validator=loader.validators.Series()
             ),
