@@ -1,5 +1,5 @@
 __version__ = (1, 1, 0)
-# meta developer: @ExclusiveFurry
+# meta developer: @DC_24V
 from telethon.tl.types import Message
 from telethon import events
 from .. import loader, utils
