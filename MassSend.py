@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# meta developer: @ExclusiveFurry
+# meta developer: @DC_24V
 
 import asyncio
 import random
