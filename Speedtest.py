@@ -1,7 +1,7 @@
 # ВСЕ ПРАВА ПРИНАДЛЕЖАТ ИХ АВТОРАМ, Я ПРОСТО СДЕЛАЛ ФОРК НА ПРОЕКТ И НЕ ВЫДАЮ СЕБЯ ЗА АВТОРА
 # meta developer: @mwmodules & forked by DC_24V.t.me
 # meta desc: 🚀 Extended Upload Speed Test — long duration test with large data volumes for accurate measurement
-# by @mwmodules & forked by ExclusiveFurry.t.me
+# by @mwmodules & forked by DC_24V.t.me
 # 🔒 Licensed under the GNU AGPLv3
 # 🌐 https://www.gnu.org/licenses/agpl-3.0.html
 
