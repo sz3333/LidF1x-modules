@@ -1,4 +1,4 @@
-# found by @ExclusiveFurry, made by some good Unknown person
+# found by @DC_24V, made by some good Unknown person
 
 from .. import loader, utils
 import random

@@ -1,4 +1,4 @@
-#meta developer: @ExclsuiveFurry
+#meta developer: @DC_24V
 import asyncio
 import contextlib
 import os

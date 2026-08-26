@@ -1,4 +1,4 @@
-# meta developer: @ExclusiveFurry
+# meta developer: @DC_24V
 # scope: hikka_only
 # scope: hikka_min 1.6.2
 

@@ -22,7 +22,7 @@
 
 __version__ = (0, 0, 2)
 
-# meta developer: @ExclusiveFurry
+# meta developer: @DC_24V
 
 
 import re

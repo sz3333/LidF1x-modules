@@ -1,4 +1,4 @@
-# meta developer: @ExclusiveFurry
+# meta developer: @DC_24V
 # requires: playwright
 
 import os

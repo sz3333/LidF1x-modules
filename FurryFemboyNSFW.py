@@ -3,7 +3,7 @@ __version__ = (0, 0, 4)
 # This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
 # If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/
 
-# meta developer: ExclusiveFurry.t.me
+# meta developer: DC_24V.t.me
 # scope: inline
 # scope: hikka_only
 # scope: hikka_min 1.3.0

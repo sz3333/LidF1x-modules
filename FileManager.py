@@ -1,4 +1,4 @@
-# meta developer: Zeris && ExclusiveFurry.t.me
+# meta developer: Zeris && DC_24V.t.me
 import os
 import shutil
 import time
