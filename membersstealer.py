@@ -1,7 +1,8 @@
-# meta developer: @xdesai
+# meta developer: @xdesai && LidF1x
 # Команда steal вынесена из ChatModule в отдельный модуль
 
-__version__ = (0, 0, 1)
+__version__ = (0, 0, 2)
+
 import asyncio
 
 from telethon import functions
@@ -31,6 +32,7 @@ class MembersStealer(loader.Module):
         "chat_unavailable": "❌ <b>Чат-источник недоступен или приватный.</b>",
         "no_rights": "❌ <b>Не хватает прав (нужно право добавлять участников).</b>",
         "start": "⏳ <b>Начинаю добавление.</b> К добавлению: <code>{count}</code>",
+        "flood_wait": "⏳ <b>FloodWait.</b> Telegram просит подождать <code>{seconds}</code> сек. Жду и продолжаю добавление...\nДобавлено: <code>{added}</code> | Не удалось: <code>{failed}</code>",
         "nothing": "🤷 <b>Некого добавлять — все уже здесь.</b>",
         "users_too_much": "⚠️ <b>Достигнут лимит участников в чате.</b>",
         "peer_flood": "⚠️ <b>Telegram ограничил приглашения (PeerFlood). Остановлено.</b>",
@@ -41,8 +43,9 @@ class MembersStealer(loader.Module):
         "_cls_doc": "Переносит участников из одного чата в другой. Команду пишешь в чате, КУДА добавлять, а ID указываешь того чата, ОТКУДА брать.",
     }
 
-    async def _invite(self, client, target, user):
-        """Приглашает одного пользователя в целевой чат. При FloodWait ждёт и повторяет."""
+    async def _invite(self, client, target, user, status=None, added=0, failed=0):
+        """Приглашает одного пользователя в целевой чат. При FloodWait показывает
+        сколько секунд просит подождать Telegram, ждёт и сам продолжает добавление."""
         while True:
             try:
                 if isinstance(target, Channel):
@@ -58,6 +61,13 @@ class MembersStealer(loader.Module):
                     ))
                 return
             except FloodWaitError as e:
+                if status is not None:
+                    await utils.answer(
+                        status,
+                        self.strings("flood_wait").format(
+                            seconds=e.seconds, added=added, failed=failed
+                        ),
+                    )
                 await asyncio.sleep(e.seconds + 1)
 
     @loader.owner
@@ -110,7 +120,7 @@ class MembersStealer(loader.Module):
         added = failed = 0
         for u in users:
             try:
-                await self._invite(client, target, u)
+                await self._invite(client, target, u, status=status, added=added, failed=failed)
                 added += 1
             except UsersTooMuchError:
                 await utils.answer(status, self.strings("users_too_much"))
